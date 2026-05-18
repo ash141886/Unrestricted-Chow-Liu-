@@ -51,8 +51,8 @@ The repository implements:
 Python 3.10 or later is recommended.
 
 ```bash
-git clone https://github.com/ash141886/unrestricted-chow-liu-.git
-cd unrestricted-chow-liu-
+git clone https://github.com/ash141886/Unrestricted-Chow-Liu-.git
+cd Unrestricted-Chow-Liu-
 pip install -r requirements.txt
 ```
 

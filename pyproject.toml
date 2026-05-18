@@ -41,7 +41,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/ash141886/unrestricted-chow-liu-"
+Repository = "https://github.com/ash141886/Unrestricted-Chow-Liu-"
 
 [tool.setuptools.packages.find]
 where = ["src"]
