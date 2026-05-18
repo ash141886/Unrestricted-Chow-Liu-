@@ -5,10 +5,10 @@ Reproduction code for the paper
 > **A Note on Unrestricted Chow–Liu Tree Selection for Mixed
 > Discrete–Continuous Data**
 
-The compiled paper (`docs/manuscript.pdf`) contains the method, the
-theoretical results, and the empirical analysis. This repository
-contains the code, data, and figures needed to reproduce every
-table and figure in the paper.
+The manuscript is currently under review. This repository contains
+the code, data, and figures needed to reproduce every table and
+figure in the paper. A link to the published version will be added
+once it is available.
 
 ---
 
@@ -147,10 +147,6 @@ unrestricted-chow-liu/
 │   ├── asia.csv               # Asia Bayesian network, 5000 samples
 │   └── breastcancer.csv       # West et al. gene-expression dataset
 ├── figures/                   # Six figures used in the manuscript
-├── docs/
-│   ├── manuscript.pdf         # Compiled paper
-│   ├── manuscript.tex         # LaTeX source
-│   └── references.bib         # Bibliography
 ├── src/unrestricted_chowliu/  # Importable Python package
 │   ├── __init__.py
 │   ├── algorithm.py           # Algorithm 1, 1a, 1b
