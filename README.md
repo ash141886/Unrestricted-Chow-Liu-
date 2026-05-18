@@ -74,8 +74,10 @@ in Tables 1–14. Figures are regenerated in `figures/`. The full
 script completes in approximately four minutes on a consumer
 laptop CPU.
 
-To run a single experiment, edit the `__main__` block of the
-script or import individual functions:
+To run a single experiment, either edit the `__main__` block of
+the script, or run the following inside a Python interpreter
+(e.g. start one with `python` or `ipython` in this directory) or
+save it as a `.py` file:
 
 ```python
 from reproduce_all import exp_4_1_mi_accuracy, exp_4_4_scaling
@@ -84,11 +86,14 @@ exp_4_1_mi_accuracy(n=2000, n_trials=15)
 exp_4_4_scaling()
 ```
 
-The clean importable package layer is at `src/unrestricted_chowliu/`:
+The clean importable package layer is at `src/unrestricted_chowliu/`.
+After `pip install -e .` (editable install from the repo root) the
+package is available system-wide and can be used as follows
+(again, inside Python, not in the shell):
 
 ```python
 import numpy as np
-from unrestricted_chowliu import algorithm, mi_estimators, metrics
+from unrestricted_chowliu import algorithm
 
 rng = np.random.default_rng(0)
 d1 = rng.integers(0, 3, size=1500)
@@ -97,6 +102,7 @@ thirds = np.quantile(g, [1/3, 2/3])
 d2 = (g > thirds[0]).astype(int) + (g > thirds[1]).astype(int)
 
 edges = algorithm.unrestricted_chowliu([d1, g, d2], ["d", "c", "d"])
+print(edges)
 ```
 
 ---
