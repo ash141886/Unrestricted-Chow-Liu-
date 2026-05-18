@@ -63,9 +63,10 @@ matplotlib, and networkx.
 
 ## Quick start
 
-To reproduce every table and figure in the paper:
+### Reproduce every table and figure in the paper
 
 ```bash
+cd Unrestricted-Chow-Liu-
 python reproduce_all.py
 ```
 
@@ -74,22 +75,37 @@ in Tables 1–14. Figures are regenerated in `figures/`. The full
 script completes in approximately four minutes on a consumer
 laptop CPU.
 
-To run a single experiment, either edit the `__main__` block of
-the script, or run the following inside a Python interpreter
-(e.g. start one with `python` or `ipython` in this directory) or
-save it as a `.py` file:
+### Run a single experiment
+
+The Python snippets below must be run **inside a Python
+interpreter, not in the shell**. Start the interpreter from the
+repo root:
+
+```bash
+cd Unrestricted-Chow-Liu-
+python                # or: ipython
+```
+
+then paste, inside the interpreter:
 
 ```python
 from reproduce_all import exp_4_1_mi_accuracy, exp_4_4_scaling
-
 exp_4_1_mi_accuracy(n=2000, n_trials=15)
 exp_4_4_scaling()
 ```
 
-The clean importable package layer is at `src/unrestricted_chowliu/`.
-After `pip install -e .` (editable install from the repo root) the
-package is available system-wide and can be used as follows
-(again, inside Python, not in the shell):
+### Use the importable package
+
+The clean importable layer lives in `src/unrestricted_chowliu/`.
+To make it available system-wide, install it once in editable
+mode from the repo root:
+
+```bash
+cd Unrestricted-Chow-Liu-
+pip install -e .
+```
+
+After this, start Python from any directory and run:
 
 ```python
 import numpy as np
@@ -103,6 +119,15 @@ d2 = (g > thirds[0]).astype(int) + (g > thirds[1]).astype(int)
 
 edges = algorithm.unrestricted_chowliu([d1, g, d2], ["d", "c", "d"])
 print(edges)
+# Expected output: {(0, 1), (1, 2)}
+```
+
+If you would rather skip the `pip install -e .` step, set
+`PYTHONPATH` to the `src/` folder at the command line instead:
+
+```bash
+cd Unrestricted-Chow-Liu-
+PYTHONPATH=src python      # then paste the same Python block as above
 ```
 
 ---
