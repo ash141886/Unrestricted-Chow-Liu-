@@ -1,0 +1,1810 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Unrestricted Chow-Liu Structure Selection for Mixed
+%% Discrete-Continuous Data
+%% Final manuscript for Behaviormetrika
+%%
+%% This file compiles standalone with plain article class.
+%% To submit to Behaviormetrika, replace the \documentclass line below
+%% with the Springer class (\documentclass{sn-jnl} or similar) per the
+%% journal's author kit. The body content (after \begin{document}) is
+%% portable.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\graphicspath{{./}}  % all figures sit next to manuscript.tex (flat, no subfolder)
+% Numbered references in square brackets, sorted and range-compressed,
+% so \citep{a,b,c} renders as [1, 2, 3] (or [1-3] when consecutive).
+\usepackage[numbers,square,sort&compress]{natbib}
+\usepackage{url}
+
+% Make citation numbers and cross-references clickable. Links are
+% rendered in dark colours (academic-paper style): citations in dark
+% green, internal cross-references (Proposition, Corollary, Section,
+% Figure, Table) in dark blue, URLs in muted blue. The colours are
+% subtle enough not to distract but visible enough for the reader to
+% see which text is a click target.
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks   = true,
+  linkcolor    = {[rgb]{0.0, 0.0, 0.55}},
+  citecolor    = {[rgb]{0.0, 0.45, 0.0}},
+  urlcolor     = {[rgb]{0.0, 0.0, 0.7}},
+  bookmarksopen = true,
+  bookmarksnumbered = true
+}
+
+% cleveref must be loaded AFTER hyperref. It makes references like
+% \cref{prop:main} render as "Proposition 1" with the whole phrase
+% being a clickable link, rather than "Proposition 1" with only the
+% number being the link. The capitalize option keeps the leading word
+% capitalised (Proposition, Corollary, Section, ...) at sentence start.
+\usepackage[capitalize,noabbrev]{cleveref}
+\crefname{section}{Section}{Sections}
+\crefname{subsection}{Section}{Sections}
+\crefname{table}{Table}{Tables}
+\crefname{figure}{Figure}{Figures}
+\crefname{equation}{equation}{equations}
+
+% Algorithm box without external package (portable).
+% If you have algorithm/algorithmic packages available, you can replace
+% the \begin{algBox}...\end{algBox} environment below with a standard
+% \begin{algorithm}...\end{algorithm} block.
+\newenvironment{algBox}[1]
+  {\medskip\par\noindent\textbf{Algorithm 1: #1}\\\rule{\textwidth}{0.5pt}\par\small}
+  {\par\rule{\textwidth}{0.5pt}\medskip}
+
+% Theorem environments
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{A Note on Unrestricted Chow--Liu Tree Selection for Mixed
+Discrete--Continuous Data}
+
+\author{Anonymous}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{abstract}
+The Chow--Liu algorithm summarises the dependency structure of
+mixed discrete--continuous data as a tree of strongest pairwise
+associations. Earlier versions exclude trees in which a
+continuous variable connects two discrete variables, because such
+a path complicates the later density-fitting step. We show that
+this restriction is unnecessary for tree selection, which depends
+only on pairwise mutual-information values, well-defined for
+every combination of variable types. The restriction applies only
+to the later density-fitting step. We prove consistency of the unrestricted
+procedure and give finite-sample error bounds under a tail
+assumption on the pairwise mutual-information estimates. On synthetic mixed graphs and a
+synthetic gene-network benchmark, the unrestricted procedure
+recovers trees that the restricted procedure cannot. On the
+fully discrete Asia Bayesian benchmark, where Edwards'
+restriction is inactive by construction, the pipeline attains the
+tree-approximation ceiling. A breast-cancer gene-expression
+dataset is included as an illustration, since no ground truth is
+available. The comparison with a discretisation-based estimator is
+regime-dependent. In the sample-size sweep, the discretisation
+estimator performs better at $n = 75$, the
+$k$-nearest-neighbour estimator performs better at
+$n = 1{,}500$, and the two are statistically indistinguishable
+at $n \in \{100, 200, 500, 1{,}000\}$.
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:} Chow--Liu algorithm; mixed graphical
+models; mutual information; structure learning; conditional Gaussian
+model.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:intro}
+
+Consider a study that records a panel of $p$ variables for $n$
+individuals. Some variables are categorical, such as genotypes at
+single nucleotide polymorphism (SNP) sites, and some are continuous,
+such as gene-expression levels or disease biomarkers. A common first
+task is to summarise the pairwise dependencies among these
+variables. The Chow--Liu algorithm \citep{chow1968approximating} answers a
+tractable version of this task. It returns the tree-structured graph whose edges together capture as
+much of the joint dependency as possible, measured by the
+sum of pairwise mutual informations (MI). The optimal tree is the maximum-weight spanning tree (MST) of
+the complete graph whose edge weights are pairwise MI values.
+Equivalently, the chosen tree minimises the
+Kullback--Leibler (KL) divergence to the true joint distribution
+among all tree-structured approximations.
+
+This mixed-type setting arises naturally in genetics
+\citep{rockman2006genetics, nica2013expression} and in
+epidemiology where disease status accompanies continuous
+biomarkers. The conditional Gaussian (CG) model
+\citep{lauritzen1989graphical, lauritzen1996graphical} is the standard
+joint distribution for such data. A modelling issue arises in
+the CG framework. If the tree contains a path $D_1$-$G$-$D_2$ in which
+$G$ is continuous and $D_1, D_2$ are discrete, then the tree
+factorisation requires the local conditional $P(D_2 \mid G)$, which
+is not part of the standard CG parametrisation
+\citep{whittaker1990graphical}. To avoid
+this difficulty, \citet{edwards2010selecting} imposed a structural
+restriction on the tree search. The restriction forbids continuous
+nodes from separating discrete nodes. It guarantees a fully
+parametrised CG model on the learned tree, but it also prevents the
+algorithm from recovering $D$-$G$-$D$ Markov paths that arise
+naturally in mixed-type data. \citet{suzuki2017chow} subsequently evaded the restriction in
+practice by discretising continuous
+variables with a nested mesh and applying a minimum description
+length (MDL) penalty to the discretised mutual information. The
+restriction is sometimes treated as part of the mixed-type
+Chow--Liu procedure, although it constrains only the later CG
+parametrisation step.
+
+We observe that the restriction belongs to the later
+density-fitting step, not to the Chow--Liu objective itself. The
+objective is a sum of pairwise mutual informations, each of which is
+symmetric in its two arguments. The objective therefore does not require any directional factor such
+as $P(D \mid G)$. Under
+standard regularity conditions, the unrestricted procedure recovers
+the population Chow--Liu tree as the sample size grows. We state
+this consistency result in \cref{prop:main} and a forest analogue
+under a shrinking threshold in \cref{prop:forest}. A finite-sample
+bound (\cref{cor:tree}) and a tighter per-swap bound
+(\cref{cor:swap}) follow. Our contribution is the clarification, its
+empirical validation, and the supporting finite-sample analysis. The
+proof techniques are standard.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+\item \emph{Separation of structure selection from CG
+parametrisation.} The Chow--Liu objective is a sum of pairwise mutual
+informations. Each is a symmetric quantity that can be written using
+either $P(G \mid D)$ or $P(D \mid G)$ through the standard entropy
+decomposition. The objective therefore does not require modelling
+$P(D \mid G)$ for any pair. Edwards' restriction applies only to
+the subsequent step of fitting a fully parametric CG density on
+the selected tree.
+
+\item \emph{An estimator-agnostic procedure with finite-sample
+bounds.} Algorithm~1 uses the
+Kraskov--St\"ogbauer--Grassberger (KSG) $k$-nearest-neighbour estimator
+for continuous--continuous pairs \citep{kraskov2004estimating}, the
+mixed-pair $k$-NN estimator of \citet{gao2017estimating} for
+continuous--discrete pairs, and the empirical plug-in for
+discrete--discrete pairs. \Cref{prop:main} establishes consistency
+whenever the pairwise mutual-information estimates are per-pair
+consistent. Under an additional sub-Gaussian deviation assumption,
+\cref{cor:tree,cor:swap} give finite-sample tree-recovery bounds.
+The per-swap bound in \cref{cor:swap} uses the fact that exchanging
+one edge for another in a maximum spanning tree creates exactly one
+cycle, and bounds the probability of a single incorrect exchange. It
+improves the coarser tree-symmetric-difference bound in
+\cref{cor:tree} by a factor of $(p-1)^2$ in the exponent.
+
+\item \emph{Regime-dependent empirical comparison.} We compare
+the proposed pipeline (with the KSG MI estimator as input)
+against the Edwards-restricted MST baseline and against the
+MDL-discretisation MI estimator of \citet{suzuki2017chow} over a
+range of graph sizes, effect sizes, conditional families, and
+sample sizes. The proposed pipeline outperforms the Edwards-restricted
+baseline across the tested graph-size and effect-size settings on
+graphs containing $D$-$G$-$D$ paths. The comparison with the
+MDL-discretisation estimator is sample-size dependent. MDL
+discretisation performs better at $n = 75$ (where its bin selection
+acts as a form of model selection), the two estimators are
+statistically indistinguishable at $n \in \{100, 200, 500, 1{,}000\}$,
+and KSG performs better at $n = 1{,}500$.
+\end{enumerate}
+
+Our results cover only the first step of the Chow--Liu workflow,
+selecting which edges form the tree, and the returned graph is
+undirected. A learned edge means that two variables are
+statistically associated; it carries no causal interpretation. A
+separate step, when needed, writes the joint distribution as an
+explicit parametric density on the chosen tree. The standard
+conditional-Gaussian density uses local factors of the form
+$P(G \mid D)$, but not $P(D \mid G)$. If the chosen tree contains a
+$D$-$G$-$D$ path, this density-fitting step needs the factor
+$P(D \mid G)$, which lies outside the standard parametrisation. That step still requires either Edwards' restriction, which
+forbids the path in the first place, or an alternative
+parametrisation of $P(D \mid G)$. We do not address this
+density-fitting step.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Background}
+\label{sec:background}
+
+\subsection{Chow--Liu algorithm}
+\label{subsec:chowliu}
+
+A graphical model represents the joint distribution of $p$ random
+variables $X_1, \ldots, X_p$ as a graph whose edges encode pairwise
+dependencies. When the graph is constrained to be a tree, each
+variable is connected to the rest of the graph through a single path,
+and the joint distribution factorises into a product of pairwise
+marginals along the tree edges and univariate marginals at the
+nodes. The Chow--Liu algorithm seeks the tree $T^*$ that best
+approximates the joint distribution $P$ in Kullback--Leibler (KL)
+divergence:
+\begin{equation}
+T^* \;=\; \arg\max_{T \in \mathcal{T}} \sum_{(i,j) \in T} I(X_i; X_j),
+\label{eq:chowliu_obj}
+\end{equation}
+where $\mathcal{T}$ is the set of all spanning trees on $p$ vertices
+and $I(X_i; X_j)$ is the pairwise mutual information between $X_i$
+and $X_j$. The right-hand side of (\ref{eq:chowliu_obj}) is the
+total information captured by a tree, so the procedure selects the
+tree that captures as much pairwise dependency as possible. The
+optimisation reduces to Kruskal's algorithm
+\citep{kruskal1956shortest} applied to the complete graph weighted
+by the pairwise mutual informations. Kruskal's algorithm adds edges
+in decreasing order of weight, skipping any edge that would form a
+cycle, until $p - 1$ edges have been added. The classical Chow--Liu algorithm therefore
+returns a spanning tree even when some pairwise mutual informations
+are estimated as zero or near-zero. In the thresholded variant used
+below (\cref{prop:forest}), edges with estimated weight at or below
+a threshold $\tau_n$ are excluded before the Kruskal step is run, so
+the output may be a forest rather than a connected tree.
+Tree-structured graphical models remain a standard component of the
+probabilistic graphical models toolkit
+\citep{koller2009probabilistic} because of this clean optimality
+property and the efficiency of Kruskal's algorithm.
+
+\subsection{Mixed-type mutual information estimation}
+\label{subsec:mi}
+
+Mutual information is well-defined for any pair of random variables,
+but its estimation method depends on whether the variables are
+continuous, discrete, or mixed. For purely continuous pairs under a
+joint Gaussian assumption, the mutual information has the closed form
+$I(X; Y) = -\tfrac{1}{2}\log(1 - \rho^2)$, where $\rho$ is the
+Pearson correlation coefficient \citep{cover2006elements}. For purely
+discrete pairs, the mutual information is estimated by the empirical
+plug-in, in which the joint and marginal probabilities are replaced
+by their sample frequencies. For mixed pairs, where one variable is
+continuous and the other discrete, neither of these forms applies. A
+distribution-free alternative is the $k$-nearest-neighbour estimator of
+\citet{kraskov2004estimating}, which builds on the
+\citet{kozachenko1987sample} entropy estimator and was extended to
+mixed discrete--continuous variables with provably consistent
+convergence rates by \citet{gao2017estimating}. The method uses
+distances between each sample point and its $k$-th nearest neighbour,
+and is consistent under standard regularity conditions on the
+underlying distribution. We use $k = 5$ as the default value
+throughout. For continuous--continuous pairs in which a joint Gaussian
+assumption is not appropriate, we use the Kraskov--St\"ogbauer--%
+Grassberger (KSG) estimator \citep{kraskov2004estimating}, a
+$k$-nearest-neighbour estimator from the same paper that is designed
+for the two-continuous-variable case.
+
+\subsection{Edwards' restriction}
+\label{subsec:edwards}
+
+In the conditional Gaussian model, the tree factorisation takes the
+form $P(X_1, \ldots, X_p) = \prod_i P(X_i \mid X_{\mathrm{pa}(i)})$,
+where $\mathrm{pa}(i)$ denotes the parent of node $i$ in the tree
+rooted at any node. When each node is conditioned on a parent of the same type, the
+conditional distributions on the right-hand side are standard. The
+difficulty arises when the parent and child have different types. For a tree containing a
+path $D_1$-$G$-$D_2$ rooted at $D_1$, the factorisation becomes
+$P = P(D_1) \cdot P(G \mid D_1) \cdot P(D_2 \mid G)$. The first two
+factors are standard in the conditional Gaussian model. $P(D_1)$ is
+a discrete distribution and $P(G \mid D_1)$ is the Gaussian
+conditional that defines the model. The third factor,
+$P(D_2 \mid G)$, is the conditional distribution of a discrete
+variable given a continuous one, which is not part of the standard
+CG parametrisation. \citet{edwards2010selecting} avoided this
+difficulty by restricting Kruskal's algorithm during tree
+selection. The modified Kruskal's algorithm rejects any candidate
+edge whose addition would place a continuous node between two
+discrete components. The resulting tree always admits a full
+parametrisation within the standard CG model, but the procedure
+cannot recover any $D$-$G$-$D$ Markov chain, even when the
+data-generating distribution contains one. \Cref{fig:problem} illustrates the
+configuration that the restriction forbids.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.85\textwidth]{Fig01_problem.png}
+\caption{The $D$-$G$-$D$ configuration that Edwards' restriction
+forbids by construction. A continuous variable $G$ lies on the
+path between two discrete variables $D_1$ and $D_2$, so the
+factorisation requires $P(D_2 \mid G)$, which is not part of the
+standard CG parametrisation.}
+\label{fig:problem}
+\end{figure}
+
+\subsection{Related work}
+\label{subsec:related}
+
+Structure learning for graphical models is a well-developed area,
+with methods ranging from constraint-based to score-based and from
+parametric to nonparametric. \citet{drton2017structure} provide a
+recent overview of the field. Within mixed-type graphical modelling,
+\citet{yang2014mixed} proposed $\ell_1$-regularised models in which
+the joint distribution is represented as a member of an exponential
+family. Their approach handles arbitrary graph structures rather than
+being restricted to trees, but it targets a parametric Markov
+random field
+and requires convex optimisation rather than a combinatorial tree
+search. On the mutual information side,
+\citet{belghazi2018mine} and \citet{poole2019variational} developed
+neural variational lower bounds on mutual information (the
+mutual-information neural estimator, MINE, and the
+noise-contrastive estimator, InfoNCE) used in representation
+learning. \citet{mcallester2020formal} showed that any such
+variational bound has fundamental limitations in the
+distribution-free setting. Matching the true mutual information
+requires sample sizes that grow exponentially in the mutual
+information itself. The closest prior work to ours is
+\citet{suzuki2017chow}, who proposed an MDL-discretisation MI
+estimator and used it inside an unrestricted Chow--Liu procedure,
+thereby lifting Edwards' restriction in practice via discretisation
+of the continuous variables. We discuss the MDL-discretisation
+procedure in detail and benchmark against it empirically in
+\cref{subsec:suzuki}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Theoretical statements}
+\label{sec:theory}
+
+\subsection{Consistency of the unrestricted Chow--Liu procedure}
+\label{subsec:consistency}
+
+We refer to two quantities throughout. The first is the unrestricted
+Chow--Liu tree, obtained by maximising the total pairwise mutual
+information over all spanning trees. \Cref{prop:main} concerns this
+quantity. The second is a thresholded maximum spanning forest,
+obtained by first discarding edges with weight at or below a
+threshold $\tau_n$ and then applying Kruskal's algorithm to the
+remaining edges. \Cref{prop:forest} concerns this
+thresholded forest under additional separation assumptions. The
+zero-threshold rule used in many of our experiments returns a forest
+when some empirical mutual information estimates are zero or
+negative, but it is not a direct instance of
+\cref{prop:forest}.
+
+\begin{proposition}[Unrestricted Chow--Liu is well-defined for mixed
+types]
+\label{prop:main}
+Let $X_1, \ldots, X_p$ be random variables of arbitrary types. Assume
+
+\begin{itemize}
+\item[(A1)] the pairwise mutual informations $I(X_i; X_j)$ are
+well-defined and finite for all pairs;
+\item[(A2)] the maximum-weight spanning tree is unique;
+\item[(A3)] for each pair, $\hat{I}_n(X_i; X_j) \overset{p}{\to}
+I(X_i; X_j)$ as $n \to \infty$.
+\end{itemize}
+
+Then the unrestricted Chow--Liu algorithm recovers $T^*$ with
+probability tending to $1$, regardless of whether $T^*$ contains
+$D$-$G$-$D$ paths.
+\end{proposition}
+
+The proof follows the standard M-estimation argument over the finite
+set of spanning trees \citep{vandervaart2000asymptotic}. Uniform
+convergence over $\mathcal{T}$ follows from (A3) applied to each of
+the $\binom{p}{2}$ pairs, and identification follows from (A2). The
+essential ingredient is the symmetry identity in
+\cref{eq:identity}, recorded as a remark after the proof, which
+makes explicit that the conditional $P(D \mid G)$ is not required
+to evaluate the Chow--Liu objective. The conditional may exist as a
+regular conditional distribution, but it is not a standard local
+component of the conditional Gaussian factorisation. Under an
+additional sub-Gaussian deviation assumption on the pairwise mutual
+information estimates with a common parameter $\sigma > 0$ (stated
+formally as $P(|\hat{I}_n - I| > t) \le 2 \exp(-n t^2 / (2 \sigma^2))$
+in \cref{cor:tree}), two finite-sample bounds follow. The first
+is a tree-symmetric-difference bound (\cref{cor:tree}); the second
+is a tighter per-swap bound (\cref{cor:swap}) that uses a per-edge
+cycle-completion argument for Kruskal's algorithm and yields sample
+complexity $O(\sigma^2 \log p / \gamma_{\mathrm{swap}}^2)$, where
+$\gamma_{\mathrm{swap}}$ is the smallest population
+mutual-information gap across all single-edge swaps in $T^*$
+(formal definition at \eqref{eq:gamma_swap} and positivity under
+(A2) in \cref{cor:swap}). Under (A2) the
+per-swap gap coincides with the tree-symmetric-difference gap at
+the population level (Remark after \cref{cor:swap}).
+
+We do not establish the sub-Gaussian assumption itself.
+Empirical variance-scale diagnostics for the continuous--continuous
+KSG estimator and the mixed continuous--discrete $k$-NN MI
+estimator \citep{gao2017estimating} are reported in
+\cref{app:sigma}.
+
+Before stating the forest analogue, we make three additional
+assumptions explicit. Let $F^*$ denote the population thresholded
+maximum spanning forest, that is, the forest obtained from Kruskal's
+algorithm on the population MI matrix after discarding all edges
+with $I(X_i; X_j) = 0$. The sample-level estimator uses a
+shrinking threshold $\tau_n > 0$ in place of the population
+zero-threshold rule, and the two thresholds agree only in the
+limit $\tau_n \to 0$. We assume:
+\begin{itemize}
+\item[(A2$'$)] The population thresholded maximum spanning forest
+$F^*$ is unique, equivalently the maximum spanning tree on each
+connected component of the support graph
+$\{(i, j) : I(X_i; X_j) > 0\}$ is unique.
+\item[(A4)] Every edge in $F^*$ has mutual information at least
+$\delta > 0$.
+\item[(A5)] For every pair $(i, j)$ whose population mutual
+information is zero, the estimator satisfies
+$P\bigl(|\hat{I}_n(X_i; X_j)| > \tau_n\bigr) \to 0$
+as $n \to \infty$.
+\end{itemize}
+
+\begin{proposition}[Forest consistency under shrinking-threshold rule]
+\label{prop:forest}
+Under (A1), (A3), (A2$'$), (A4), (A5), with $\tau_n \to 0$ and
+$\tau_n \sqrt{n} \to \infty$, the estimated forest $\hat{F}_n$
+obtained from Kruskal's algorithm with threshold $\tau_n$ satisfies
+$P(\hat{F}_n = F^*) \to 1$.
+\end{proposition}
+
+The main forest experiments use $\tau_n = 0$ to match Edwards'
+procedure, which uses no threshold. The shrinking-threshold
+condition of \cref{prop:forest} ($\tau_n \to 0$, $\tau_n \sqrt{n}
+\to \infty$) is therefore not formally satisfied in those
+experiments. \Cref{subsec:shrinking} reports a separate experiment
+that does satisfy the condition.
+
+\subsection{The unrestricted Chow--Liu algorithm (Algorithm~1)}
+\label{subsec:algorithm}
+
+\begin{algBox}{Unrestricted mixed-type Chow--Liu algorithm}
+\label{alg:main}
+\textbf{Input:} Variables $X_1, \ldots, X_p$ with types
+$t_i \in \{c, d\}$ ($c$ = continuous, $d$ = discrete); data
+$\{x^{(1)}, \ldots, x^{(n)}\}$; threshold $\tau_n \ge 0$ (default
+$\tau_n = 0$); neighbour count $k \in \mathbb{N}$ for the $k$-NN
+estimators (default $k = 5$).
+\begin{enumerate}
+\item For each pair $(i, j)$ with $i < j$, compute the pairwise
+mutual-information estimate according to the pair's type:
+\begin{itemize}
+\item if $t_i = c$ and $t_j = c$:
+$\hat{w}_{ij} \gets \hat{I}^{(k)}_{\mathrm{KSG}}(X_i; X_j)$
+\citep{kraskov2004estimating};
+\item if $t_i = d$ and $t_j = d$:
+$\hat{w}_{ij} \gets \hat{I}_{\mathrm{plug\text{-}in}}(X_i; X_j)$;
+\item otherwise (one continuous and one discrete):
+$\hat{w}_{ij} \gets \hat{I}^{(k),\,\mathrm{mix}}_{k\text{-NN}}(X_i; X_j)$
+\citep{gao2017estimating}.
+\end{itemize}
+\item Exclude every edge with $\hat{w}_{ij} \le \tau_n$.
+\item $\hat{F}_n \gets \mathrm{MaxSpanningForest}(\{\hat{w}_{ij}\})$,
+computed by Kruskal's algorithm with no type restriction.
+\end{enumerate}
+\textbf{Return:} $\hat{F}_n$ (a spanning tree on $p$ vertices when
+$\tau_n = 0$ and no edge is excluded, a strict forest otherwise).
+\end{algBox}
+
+\paragraph{Algorithm 1b (Gaussian variant).} For computational
+efficiency on large graphs with many continuous--continuous pairs,
+the closed-form Gaussian MI $\hat{I}_{cc}(X; Y) = -\tfrac{1}{2}\log(1
+- \hat{\rho}^2)$ can replace the KSG estimator. We refer to this
+variant as Algorithm~1b. It is faster but is consistent only under
+joint Gaussianity. We use Algorithm~1b only in the breast-cancer
+illustration (\cref{subsec:breastcancer}).
+
+\paragraph{Algorithm 1a (Edwards-restricted baseline).} Throughout
+the experiments we refer to Algorithm 1a as the Edwards-restricted
+version of Algorithm 1, in which Kruskal's loop rejects any
+candidate edge that would place a continuous node $X_c$ on the
+unique path between two existing discrete components. Algorithm 1a
+uses the same MI estimators and the same Kruskal ordering as
+Algorithm 1. Only the type-check that decides whether to accept a
+candidate edge differs. The empirical comparisons in
+\cref{sec:experiments} use Algorithm 1a as the restricted baseline.
+
+\paragraph{What Algorithm~1 provides relative to the
+MDL-discretisation procedure of \citet{suzuki2017chow}.} Both
+procedures lift Edwards' restriction and admit $D$-$G$-$D$ paths.
+Algorithm~1 differs from the MDL-discretisation procedure in four
+respects.
+(i) It operates on the continuous data directly, with no information
+loss due to discretisation (by the data-processing inequality,
+$I(\tilde{G}; D) \le I(G; D)$ for any binning $\tilde{G}$ of $G$, with
+equality only as the bin count tends to infinity).
+(ii) It has a single hyperparameter ($k$, default 5), rather than a
+bin scheme, a bin-count grid, and an MDL penalty constant.
+(iii) \cref{prop:main} applies to any consistent pairwise MI
+estimator, so Algorithm~1 is one instance among many, whereas the
+MDL-discretisation procedure is tied to its specific discretisation
+and penalty scheme.
+(iv) \cref{prop:main} gives a direct consistency statement
+for the Chow--Liu objective on the original continuous distribution,
+whereas the MDL framework gives a description-length justification on
+the discretised surrogate. The empirical comparison in
+\cref{subsec:suzuki} shows that these methodological
+differences translate into a sample-size-dependent practical
+recommendation.
+
+\subsection{Requirements on the mutual-information estimator}
+\label{subsec:requirements}
+
+\cref{prop:main} requires only per-pair consistency (A3).
+The $k$-NN estimator
+\citep{kraskov2004estimating, gao2017estimating} satisfies (A3) under
+standard regularity conditions. The empirical plug-in for discrete
+pairs is consistent. The Gaussian formula is consistent only under
+joint Gaussianity. For variational mutual information estimators
+(MINE, InfoNCE), \citet{mcallester2020formal} showed that achieving
+$o(1)$ bias requires sample complexity exponential in the true mutual
+information in the distribution-free setting. We therefore exclude
+these estimators from the default procedure.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Experiments}
+\label{sec:experiments}
+
+All experiments use fixed random seeds and run on a single CPU core.
+A single self-contained reproduction script
+(\texttt{260516\_chow\_liu.py}) regenerates every numerical result and
+every figure in the manuscript with the same publication-grade
+settings used here. The script requires only NumPy, SciPy,
+scikit-learn, pandas, matplotlib, and networkx. The full
+reproduction script completes in approximately four minutes on a
+single CPU core (laptop-grade hardware), and we report this figure
+only as an order-of-magnitude indication.
+
+We report two standard graph-recovery metrics throughout. The $F_1$
+score is the harmonic mean of edge precision (the fraction of
+recovered edges that are correct) and edge recall (the fraction of
+true edges that are recovered). The value $F_1 = 1$ corresponds to
+exact recovery. The structural Hamming distance (SHD) is the number
+of edge insertions and deletions needed to turn the recovered tree
+into the ground-truth tree; a lower SHD indicates better recovery.
+
+\subsection{Accuracy of the mutual-information estimators}
+\label{subsec:miacc}
+
+We compare three estimators on four conditional distributions of
+$G \mid D = d$, with $n = 2{,}000$ samples and 15 trials per scenario.
+The true MI is computed by numerical integration. The conditional
+families are Gaussian (location-shifted), bimodal (mixture of two
+Gaussians), skewed (location-shifted $\chi^2_3$), and heavy-tailed
+(location-shifted Student-$t_3$).
+
+\begin{table}[ht]
+\centering
+\caption{MI estimation root mean squared error (RMSE), reported in
+units of $10^{-2}$, on four conditional distributions ($n = 2{,}000$,
+15 trials).}
+\label{tab:mi_accuracy}
+\begin{tabular}{lcccc}
+\toprule
+Scenario & True MI & ANOVA & Discret. & $k$-NN \\
+\midrule
+Gaussian   & 0.2538 & 1.13  & 3.38 & 1.55 \\
+Bimodal    & 0.6053 & 36.80 & 8.44 & 2.15 \\
+Skewed     & 0.1612 & 10.80 & 5.30 & 1.79 \\
+Heavy-tail & 0.1738 & 8.09  & 3.01 & 1.93 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ANOVA is optimal on Gaussian data but heavily biased on Bimodal
+(RMSE about $17\times$ larger than that of $k$-NN) and on Skewed
+(RMSE about $6\times$ larger). The $k$-NN estimator is competitive across all
+four conditional families. We therefore use the $k$-NN estimator
+(KSG for continuous--continuous pairs and the mixed-pair variant of
+\citet{gao2017estimating} for continuous--discrete pairs) in the
+empirical comparisons that follow, because the structure-learning
+experiments cover heterogeneous-conditional regimes in which
+ANOVA's linearity assumption does not hold.
+\Cref{fig:accuracy} visualises the estimator distributions across
+the four conditional families, and \cref{fig:convergence} shows
+convergence of the three estimators with increasing sample size on
+Gaussian data, the one benchmark on which ANOVA's assumption holds
+exactly.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\textwidth]{Fig03_accuracy.png}
+\caption{Mutual information estimation accuracy on four conditional
+distributions of $G \mid D = d$ (Gaussian, bimodal, skewed,
+heavy-tailed), each at $n = 2{,}000$ with 15 trials. The dashed line
+is the true MI computed by numerical integration. The $k$-NN
+estimator is competitive across all four families; ANOVA is severely
+biased on the non-Gaussian families.}
+\label{fig:accuracy}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\textwidth]{Fig04_convergence.png}
+\caption{Convergence of the three mutual-information estimators with
+increasing sample size $n$ on the Gaussian benchmark. The dashed
+line is the true MI. ANOVA has the smallest bias at every sample
+size, because its linearity assumption holds exactly on this
+benchmark. The $k$-nearest-neighbour estimator approaches the
+truth from above with slightly larger small-sample bias than
+ANOVA. The discretisation estimator has the largest small-sample
+downward bias and the slowest approach to the true value, but
+also approaches it as $n$ grows. All three estimators are
+consistent on the Gaussian benchmark.}
+\label{fig:convergence}
+\end{figure}
+
+\subsection{\texorpdfstring{$D$-$G$-$D$}{D-G-D} recovery (sanity check)}
+\label{subsec:dgd_sanity}
+
+We test the simplest possible $D$-$G$-$D$ configuration:
+$D_1 \sim \mathrm{Uniform}\{0, 1, 2\}$, $G \sim \mathcal{N}(0, 1) +
+1.5\, D_1$, and $D_2$ is a binary indicator of whether $G$ exceeds
+its median. The true Markov structure is $D_1$-$G$-$D_2$, a path
+that Edwards' restriction forbids by construction. In 50 trials at
+$n = 1{,}500$ the unrestricted procedure recovers the path in
+$100\%$ of trials, and the restricted procedure in $0\%$. The
+difference is representational rather than statistical: even with
+arbitrarily many samples, the restricted procedure cannot return
+this structure. \Cref{fig:dgd} contrasts the structures the two
+procedures can return.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\textwidth]{Fig05_dgd_chain.png}
+\caption{Structural comparison on a $D_1$-$G$-$D_2$ chain. Top:
+Algorithm~1 returns the true Markov path through the continuous
+$G$. Bottom: Algorithm~1a, the Edwards-restricted baseline, cannot
+represent the path through $G$ and instead returns the spurious
+$D_1$-$D_2$ edge that skips $G$. This is a representational
+constraint, not a sample-size effect. Recovery counts: Algorithm~1
+$50 / 50 = 100\%$; Algorithm~1a $0 / 50 = 0\%$, by construction.}
+\label{fig:dgd}
+\end{figure}
+
+\subsection{Synthetic expression quantitative trait locus (eQTL)
+network}
+\label{subsec:eqtl}
+
+We consider an eight-variable expression quantitative trait locus
+(eQTL) network with 3 SNPs, 4 gene expressions, and 1 disease
+indicator, including the $D$-$G$-$D$ Markov path
+$S_1 \to G_1 \to \text{Disease}$. We use $n = 1{,}500$ and 30 trials.
+
+\begin{table}[ht]
+\centering
+\caption{Synthetic eQTL recovery, with structural Hamming distance
+(SHD) defined as the number of edge insertions and deletions required
+to transform the recovered tree into the ground-truth tree
+($n = 1{,}500$, 30 trials).}
+\label{tab:eqtl}
+\begin{tabular}{lcccc}
+\toprule
+Method & Precision & Recall & $F_1$ & SHD \\
+\midrule
+Alg.~1 (proposed) + $k$-NN (KSG)        & 0.714 & 1.000 & 0.833 & 2.00 \\
+Alg.~1a (Edwards-restr.) + $k$-NN (KSG) & 0.571 & 0.800 & 0.667 & 4.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every trial returns the same edge set; the variance across trials is
+zero, so the recovery is deterministic at this signal level. The
+network and the procedure outputs are shown in
+\cref{fig:eqtl}.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{Fig06_eqtl.png}
+\caption{Synthetic eQTL network. Discrete nodes (blue): SNPs
+$S_1, S_2, S_3$; continuous nodes (green): gene expressions
+$G_1, \ldots, G_4$; binary outcome (red): Disease. The red edges form
+the $D$-$G$-$D$ Markov path $S_1 \to G_1 \to \text{Disease}$ that
+Edwards' restriction forbids by construction. $F_1$ recovery and SHD
+for each procedure are reported in \cref{tab:eqtl}.}
+\label{fig:eqtl}
+\end{figure}
+
+\subsection{Random mixed graphs}
+\label{subsec:randomgraphs}
+
+We use a Pr\"ufer-sequence random-mixed-tree generator with rejection
+sampling enforcing at least two $D$-$G$-$D$ paths in every trial. Data
+are generated in breadth-first search (BFS) order from a randomly
+chosen root, using the parent-to-child rules described in
+\cref{app:datagen}. We use Algorithm~1 ($k$-NN throughout) on every
+benchmark. Each table below draws an independent set of trials from
+this generator with its own random seed, so the same nominal
+configuration (for example, $p = 15$, $n = 1{,}500$, effect $0.6$)
+gives slightly different mean $F_1$ across tables; the variation
+across tables is therefore a rough indicator of generator-level
+variability.
+
+\paragraph{\texorpdfstring{(a) Scaling with $p$.}{(a) Scaling with p.}} We use
+$n_c = \lfloor 8p/15 \rfloor$ continuous nodes, $n = 1{,}500$, 20
+trials per row, and effect size 0.6.
+
+\begin{table}[ht]
+\centering
+\caption{Scaling with $p$ on random mixed graphs ($n = 1{,}500$, 20
+trials, effect size $= 0.6$).}
+\label{tab:scaling}
+\small
+\begin{tabular}{cccccc}
+\toprule
+$p$ & $F_1$ Alg.~1 (prop.) & $F_1$ Alg.~1a (Edw.-restr.) & SHD diff. & paired $t$ & $P$ \\
+\midrule
+5   & $0.600 \pm 0.166$ & $0.438 \pm 0.108$ & $-1.3$ & $+4.95$ & $0.0001$ \\
+8   & $0.679 \pm 0.201$ & $0.543 \pm 0.147$ & $-1.9$ & $+5.15$ & $0.0001$ \\
+12  & $0.645 \pm 0.118$ & $0.573 \pm 0.108$ & $-1.6$ & $+3.76$ & $0.0013$ \\
+15  & $0.739 \pm 0.149$ & $0.639 \pm 0.136$ & $-2.8$ & $+4.17$ & $0.0005$ \\
+20  & $0.684 \pm 0.131$ & $0.637 \pm 0.110$ & $-1.8$ & $+2.39$ & $0.0273$ \\
+30  & $0.728 \pm 0.079$ & $0.669 \pm 0.078$ & $-3.4$ & $+4.01$ & $0.0007$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{(b) Effect-size robustness} ($p = 15$, $n = 1{,}500$, 20
+trials).
+
+\begin{table}[ht]
+\centering
+\caption{Effect-size sweep at $p = 15$.}
+\label{tab:effect}
+\begin{tabular}{ccccc}
+\toprule
+effect & $F_1$ Alg.~1 (prop.) & $F_1$ Alg.~1a (Edw.-restr.) & paired $t$ & $P$ \\
+\midrule
+0.4 & $0.575 \pm 0.127$ & $0.536 \pm 0.133$ & $+2.60$ & $0.0174$ \\
+0.6 & $0.714 \pm 0.093$ & $0.650 \pm 0.110$ & $+4.16$ & $0.0005$ \\
+0.8 & $0.746 \pm 0.129$ & $0.646 \pm 0.129$ & $+5.72$ & $<0.0001$ \\
+1.0 & $0.768 \pm 0.115$ & $0.675 \pm 0.080$ & $+4.95$ & $0.0001$ \\
+1.5 & $0.818 \pm 0.114$ & $0.689 \pm 0.094$ & $+9.00$ & $<0.0001$ \\
+2.0 & $0.775 \pm 0.116$ & $0.661 \pm 0.095$ & $+4.77$ & $0.0001$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The paired advantage is significant across all effect sizes from
+0.4 to 2.0. For interpretation, the true population mutual
+information of a Gaussian-shift edge at each effect size is reported
+in \cref{tab:effect_mi}. The regime spans true MI from
+$\approx 0.05$ nats (effect $0.4$) to $\approx 0.62$ nats (effect
+$2.0$).
+
+\begin{table}[ht]
+\centering
+\caption{Population mutual information of a Gaussian-shift edge with
+$K = 3$ discrete categories, unit conditional variance, at each
+effect size used in \cref{tab:effect}. Computed by numerical
+integration.}
+\label{tab:effect_mi}
+\begin{tabular}{cc}
+\toprule
+effect & true $I(G; D)$ (nats) \\
+\midrule
+0.4 & 0.0507 \\
+0.6 & 0.1075 \\
+0.8 & 0.1772 \\
+1.0 & 0.2538 \\
+1.5 & 0.4472 \\
+2.0 & 0.6191 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{(c) Heterogeneous-distribution data} ($p = 15$,
+$n = 1{,}500$, 20 trials, effect size $= 0.6$): each $c \mid d$ edge
+independently uses one of four conditional families, chosen uniformly
+at random. The families are Gaussian
+$\mathcal{N}(\text{effect}\cdot d, 1)$, bimodal, skewed
+($\chi^2_3$-shift), and heavy-tailed ($t_3$-shift).
+
+\begin{table}[ht]
+\centering
+\caption{Heterogeneous-distribution experiment. The
+MDL-discretisation MI estimator \citep{suzuki2017chow} is added as a
+comparator; paired $t$-tests are against the proposed pipeline with
+the KSG estimator.}
+\label{tab:hetero}
+\begin{tabular}{lcc}
+\toprule
+Method & $F_1$ & paired $t$ ($P$) vs Alg.~1 + KSG \\
+\midrule
+Alg.~1 (proposed) + $k$-NN (KSG)        & $0.707 \pm 0.098$ & reference \\
+Alg.~1 (proposed) + MDL discr.\ MI      & $0.704 \pm 0.116$ & $+0.15$ ($P = 0.8833$) \\
+Alg.~1a (Edwards-restr.) + $k$-NN (KSG) & $0.654 \pm 0.099$ & $+3.29$ ($P = 0.0039$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\Cref{tab:hetero} reports the result. Under heterogeneous
+conditional families, Algorithm~1 paired with the KSG estimator and
+Algorithm~1 paired with MDL discretisation yield indistinguishable
+mean $F_1$ ($P = 0.88$). The proposed pipeline
+significantly outperforms the Edwards-restricted baseline
+($P = 0.0039$). The advantage of removing the type-pair restriction
+therefore holds under distributional heterogeneity; the choice
+between the two MI estimators shows no significant difference on
+this benchmark at $n = 1{,}500$.
+
+\subsection{Sample-size sweep on the
+\texorpdfstring{$D$-$G$-$D$}{D-G-D} chain}
+\label{subsec:neartie}
+
+We revisit the three-node $D_1$-$G$-$D_2$ chain of
+\cref{subsec:dgd_sanity} ($D_1 \sim \mathrm{Uniform}\{0,1,2\}$, $G$
+Gaussian shifted by $D_1$, $D_2$ a thresholded function of $G$) and
+vary the sample size. Chain transitivity gives the direct $D_1$-$D_2$ pair a non-zero
+population mutual information that lies below the two true path
+edges. A noisy MI estimate could therefore swap the true edge
+$G$-$D_2$ for the spurious $D_1$-$D_2$ edge during the Kruskal
+step, making this configuration a finite-sample stress test for
+the unrestricted procedure. It
+recovers the $D$-$G$-$D$ chain in 100\% of trials across
+$n \in \{500, 1000, 2000, 5000\}$,
+while the restricted procedure recovers 0\% by construction.
+
+\subsection{Shrinking-threshold variant of Algorithm~1}
+\label{subsec:shrinking}
+
+We run Algorithm~1 with $\tau_n = c \log(n)/\sqrt{n}$ for
+$c \in \{0, 0.1, 0.5, 1.0\}$, on $p = 15$ random mixed graphs from the
+generator used in \cref{subsec:randomgraphs}, with $n =
+1{,}500$, 20 trials, and effect size 0.6. The setting $c = 0$
+corresponds to the zero-threshold rule used elsewhere, while
+$c \in \{0.1, 0.5, 1.0\}$ satisfies the conditions of
+\cref{prop:forest}.
+
+\begin{table}[ht]
+\centering
+\caption{Shrinking-threshold variant.}
+\label{tab:shrinking}
+\begin{tabular}{cccccc}
+\toprule
+$c$ & $\tau_n$ at $n=1500$ & $F_1$ & SHD & Precision & Recall \\
+\midrule
+0.0 & 0.000 & $0.679 \pm 0.127$ & $9.0 \pm 3.6$ & 0.679 & 0.679 \\
+0.1 & 0.019 & $0.679 \pm 0.127$ & $9.0 \pm 3.6$ & 0.679 & 0.679 \\
+0.5 & 0.094 & $0.562 \pm 0.136$ & $10.4 \pm 3.0$ & 0.677 & 0.482 \\
+1.0 & 0.189 & $0.466 \pm 0.086$ & $11.0 \pm 1.8$ & 0.731 & 0.343 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $n = 1{,}500$, the threshold $c = 0.1$ excludes no true edges. In
+practice, at $n = 1{,}500$ the choice $c = 0.1$ yields $F_1$ and
+SHD identical to the zero-threshold rule (\cref{tab:shrinking})
+while satisfying the consistency conditions of
+\cref{prop:forest}.
+
+\subsection{Sample-size sweep against the MDL-discretisation estimator}
+\label{subsec:suzuki}
+
+The MDL-discretisation MI estimator of \citet{suzuki2017chow}
+discretises each continuous variable and uses the MDL-penalised
+empirical MI
+$\hat{I}_{\mathrm{MDL}}(\tilde{G}; D) = \hat{I}(\tilde{G}; D) -
+(M-1)(C-1)\log(n)/(2n)$. We implement this estimator by sweeping bin
+counts $M \in \{2, 4, 8, 16, 32\}$ and taking the maximum penalised
+MI, and feed its output into the same unrestricted Kruskal step as
+Algorithm~1.
+
+\paragraph{Synthetic eQTL benchmark} ($n = 1{,}500$, 30 trials).
+Algorithm~1 paired with the MDL-discretisation MI estimator and
+Algorithm~1 paired with the KSG estimator produce identical
+results. Both yield $F_1 = 0.833$, SHD $= 2.0$, and both recover the
+$S_1 \to G_1 \to \text{Disease}$ chain. The Edwards-restricted
+baseline yields $F_1 = 0.667$ and SHD $= 4.0$.
+
+\paragraph{Random mixed graphs benchmark, sample-size sweep}
+($p = 15$, 20 trials per row, effect size $= 0.6$).
+
+\begin{table}[ht]
+\centering
+\caption{Sample-size sweep on $p = 15$ random graphs.}
+\label{tab:suzuki_n}
+\small
+\begin{tabular}{cccc}
+\toprule
+$n$ & $F_1$ Alg.~1 + KSG & $F_1$ Alg.~1 + MDL discr. & $F_1$ Alg.~1a (Edw.-restr.) + KSG \\
+\midrule
+75    & $0.529 \pm 0.086$         & $\mathbf{0.575 \pm 0.107}$ & $0.521 \pm 0.085$ \\
+100   & $0.568 \pm 0.136$         & $0.542 \pm 0.116$          & $0.521 \pm 0.132$ \\
+200   & $0.625 \pm 0.087$         & $0.660 \pm 0.091$          & $0.586 \pm 0.080$ \\
+500   & $0.589 \pm 0.133$         & $0.619 \pm 0.106$          & $0.543 \pm 0.120$ \\
+1000  & $0.707 \pm 0.093$         & $0.664 \pm 0.099$          & $0.632 \pm 0.079$ \\
+1500  & $\mathbf{0.736 \pm 0.122}$ & $0.686 \pm 0.104$          & $0.657 \pm 0.086$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We report paired $t$-tests on $F_1$ over the same simulated graphs.
+The labels indicate which procedure has the larger mean $F_1$ when the
+test is significant at $\alpha = 0.05$; otherwise the entry is marked
+``n.s.''\ (not significant).
+
+\begin{table}[ht]
+\centering
+\caption{Paired comparisons for the sample-size sweep.}
+\label{tab:suzuki_ttest}
+\small
+\begin{tabular}{cc}
+\toprule
+$n$ & KSG vs MDL discr.\ MI: paired $t$-test on $F_1$ \\
+\midrule
+75    & MDL discr.\ preferred, $P = 0.0395$ \\
+100   & n.s., $P = 0.2308$ \\
+200   & n.s., $P = 0.1885$ \\
+500   & n.s., $P = 0.2697$ \\
+1000  & n.s., $P = 0.0967$ (KSG slightly higher mean) \\
+1500  & KSG preferred, $P = 0.0265$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A qualitative regime crossover is visible between the two
+extremes. Denote the two pairings as Alg.~1\,+\,MDL and
+Alg.~1\,+\,KSG. At $n = 75$, Alg.~1\,+\,MDL yields significantly
+higher $F_1$ ($P = 0.04$), because the MDL penalty adaptively
+favours coarser bins when samples are sparse, which acts as a
+form of model selection. At $n \in \{100, 200, 500\}$ the two
+estimators are statistically indistinguishable on $F_1$
+($P \in \{0.23, 0.19, 0.27\}$ respectively). At $n = 1{,}000$,
+Alg.~1\,+\,KSG has slightly higher mean $F_1$, but the paired
+comparison is not significant at $\alpha = 0.05$ ($P = 0.097$).
+At $n = 1{,}500$, Alg.~1\,+\,KSG is significantly better
+($P = 0.027$). The discretisation step in the MDL estimator
+introduces a finite-sample bias that grows relative to its
+variance benefit as $n$ increases. (The
+data-processing inequality says only that
+$I(\tilde G; D) \le I(G; D)$ at the population level; at finite
+sample sizes, discretisation is a bias--variance trade-off, and the
+MDL penalty adaptively selects coarser bins to favour variance
+reduction under data sparsity.) At both ends of the sample-size
+range the unrestricted Algorithm~1 yields higher mean $F_1$ than the
+Edwards-restricted baseline.
+
+\paragraph{\texorpdfstring{Adaptive-$k$ variant (exploratory).}{Adaptive-k variant (exploratory).}}
+An exploratory adaptive-$k$ check is reported in
+\cref{app:adaptive}; it narrows but does not eliminate the
+small-sample advantage of the MDL-discretisation estimator, and
+is not used in support of the main $n = 1{,}500$ comparison.
+
+\subsection{Mutual-information estimator ablation}
+\label{subsec:ablation}
+
+To check whether the recovery improvement reported in
+\cref{subsec:eqtl} depends on the specific MI estimator, we
+compare three estimators (ANOVA, fixed-grid discretisation, and
+$k$-NN (KSG)) on the same eQTL benchmark at $n = 1{,}500$ over
+20 trials. All three are used as inputs to Algorithm~1.
+
+\begin{table}[ht]
+\centering
+\caption{Estimator ablation on the eQTL benchmark.}
+\label{tab:ablation}
+\begin{tabular}{lcc}
+\toprule
+Procedure & $F_1$ & SHD \\
+\midrule
+Alg.~1 (proposed) + ANOVA MI               & $0.833 \pm 0.000$ & $2.00 \pm 0.00$ \\
+Alg.~1 (proposed) + fixed-grid discr.\ MI  & $0.833 \pm 0.000$ & $2.00 \pm 0.00$ \\
+Alg.~1 (proposed) + $k$-NN (KSG) MI        & $0.833 \pm 0.000$ & $2.00 \pm 0.00$ \\
+Alg.~1a (Edwards-restr.) + $k$-NN (KSG) MI & $0.667 \pm 0.000$ & $4.00 \pm 0.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On this benchmark, all three MI estimators produce identical
+recovery. The structural advantage of removing the restriction
+(0.833 versus 0.667 in $F_1$) is independent of the choice. We
+recommend $k$-NN as the default.
+
+\subsection{Fully discrete sanity check: Asia network}
+\label{subsec:asia}
+
+We include the Asia Bayesian network \citep{lauritzen1988local} as a
+sanity check on a canonical fully discrete benchmark. Asia has 8
+binary variables and 8 directed acyclic graph (DAG) skeleton edges. We use the 5000-sample dataset from the
+\texttt{gRbase} R package \citep{hojsgaard2012graphical}. For
+$n \in \{500, 1{,}000, 2{,}500\}$, we draw 15 subsamples without
+replacement from the full 5000-sample dataset; the $n = 5{,}000$
+row uses the full dataset directly. Asia is
+fully discrete, so Edwards' type-pair restriction is inactive
+and all three procedures (Alg.~1 + KSG, Alg.~1a + KSG, Alg.~1 + MDL
+discretisation) produce identical trees by construction. The
+benchmark therefore serves to confirm that the proposed pipeline
+recovers a known canonical structure on real data, rather than to
+provide a comparison among methods.
+The Asia skeleton has 8 edges, but any spanning tree on 8 nodes
+contains only 7 edges, so a Chow--Liu tree cannot recover the full
+skeleton. The maximum $F_1$ attainable by a tree approximation of
+an 8-node, 8-edge graph occurs when all 7 tree edges are true
+positives: precision $= 7/7 = 1$, recall $= 7/8$, and
+$F_1 = \tfrac{2 \cdot 1 \cdot (7/8)}{1 + 7/8} = 14/15 \approx 0.933$.
+\Cref{tab:asia} reports exactly this value at $n = 5{,}000$, so the
+procedure attains the tree-approximation ceiling.
+
+\begin{table}[ht]
+\centering
+\caption{Asia network skeleton recovery (the three procedures coincide
+on this benchmark).}
+\label{tab:asia}
+\begin{tabular}{cc}
+\toprule
+$n$ & $F_1$ \\
+\midrule
+500   & $0.803 \pm 0.091$ \\
+1000  & $0.800 \pm 0.069$ \\
+2500  & $0.827 \pm 0.053$ \\
+5000  & $0.933$ (full sample, single run) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At $n = 5{,}000$, the procedure recovers 7 of the 8 DAG skeleton edges
+in every subsample. This matches the maximum number of skeleton edges
+that any spanning tree on 8 nodes can contain (a tree has $p - 1 = 7$
+edges); the missing edge is excluded by the tree edge-count
+constraint, not by estimation failure.
+
+\subsection{Breast cancer gene expression (illustration only)}
+\label{subsec:breastcancer}
+
+We apply Algorithm~1b to $n = 250$ samples and 1000 genes
+\citep{west2001predicting}. The top gene identified by both the
+$t$-test $p$-value and the $k$-NN mutual information against the
+class label is \texttt{A.202870\_s\_at}.
+
+\begin{table}[ht]
+\centering
+\caption{Top five genes ranked by $k$-NN mutual information against
+the class label.}
+\label{tab:bc}
+\begin{tabular}{clr}
+\toprule
+Rank & Probe & $k$-NN MI \\
+\midrule
+1 & A.202870\_s\_at & 0.236 \\
+2 & A.212949\_at    & 0.214 \\
+3 & A.209408\_at    & 0.208 \\
+4 & B.224753\_at    & 0.190 \\
+5 & B.228559\_at    & 0.189 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No ground-truth graph is available for this dataset. The section is
+included for illustration only. Algorithm~1b uses the Gaussian MI
+formula for gene--gene pairs. \Cref{fig:bc_forest} shows the
+top-50-gene forest learned by the proposed procedure on this dataset.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{Fig08_forest50.png}
+\caption{Chow--Liu forest learned by Algorithm~1b on the
+breast-cancer expression dataset (top 50 differentially expressed
+genes plus the binary class label, $n = 250$). Gene--class edges use
+the mixed-pair $k$-NN mutual information estimator; gene--gene edges
+use the Gaussian formula. The class node (CLASS, red) is connected
+to gene \texttt{A.202870\_s\_at}, which is also the top gene by
+$t$-test $p$-value. The section is presented as an illustration; no
+ground-truth graph is available for this dataset.}
+\label{fig:bc_forest}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}
+\label{sec:discussion}
+
+The propositions of \cref{subsec:consistency} formalise the
+observation that Edwards' restriction is unnecessary at the
+structure-selection step. \Cref{cor:swap} is the main quantitative
+contribution. It yields a sample complexity of
+$O(\sigma^2 \log p / \gamma_{\mathrm{swap}}^2)$. Under (A2),
+$\gamma_{\mathrm{swap}} = \gamma$ at the population level (because
+the second-best spanning tree differs from $T^*$ by a single edge
+swap), and \cref{cor:swap} is tighter than \cref{cor:tree} by a
+factor of $(p-1)^2$ in the exponent.
+
+Empirically, on the $n = 1{,}500$ graph-size sweep with random mixed
+trees containing $D$-$G$-$D$ Markov paths, removing the restriction
+yields higher $F_1$ at every tested graph size, with paired tests
+remaining significant after Benjamini--Hochberg correction
+(\cref{subsec:randomgraphs}). On the eQTL benchmark
+(\cref{subsec:eqtl}) the advantage is $F_1 = 0.833$ versus
+$0.667$; the recovery is deterministic at this signal level. Against the MDL-discretisation MI estimator of
+\citet{suzuki2017chow} (\cref{subsec:suzuki}), the comparison is
+sample-size dependent. At $n = 75$, pairing Algorithm~1 with MDL
+discretisation yields significantly higher $F_1$ than pairing it
+with KSG ($P = 0.04$). At $n \in \{100, 200, 500, 1{,}000\}$ the
+two estimators are statistically indistinguishable
+($P > 0.05$ in every case). At $n = 1{,}500$, pairing with KSG is
+significantly better ($P = 0.027$). On the fully discrete Asia
+Bayesian network (\cref{subsec:asia}) all three procedures (Algorithm
+1 with KSG, Algorithm 1a with KSG, Algorithm 1 with MDL
+discretisation) coincide because Edwards' restriction is inactive on
+all-discrete data; at $n = 5{,}000$, the learned tree recovers $7$ of
+the $8$ skeleton edges, the maximum possible number for any spanning
+tree on $8$ nodes.
+
+\paragraph{Multiple testing.} \cref{subsec:randomgraphs,subsec:suzuki}
+report $20$ paired $t$-tests across the scaling, effect-size,
+heterogeneous, and MI-estimator sample-size sweeps. Of these,
+$15$ have raw $P < 0.05$ and $5$ have raw $P \ge 0.05$. After applying
+the Benjamini--Hochberg procedure to control the false discovery
+rate at $0.05$, we find that $14$ of the $15$ raw-significant
+tests remain significant after correction (largest adjusted $P = 0.039$); the
+remaining raw-significant comparison (MDL versus KSG at $n = 75$,
+raw $P = 0.0395$) lies above the BH threshold (adjusted
+$P = 0.053$). The five raw non-significant comparisons remain
+non-significant under the correction. Multiple-testing adjustment therefore does not change the
+qualitative claim.
+
+\Cref{app:sigma} reports an empirical variance-scale
+diagnostic for the KSG and mixed-pair $k$-NN estimators. The
+diagnostic returns the quantity
+$\sigma_{\mathrm{emp}} = \sqrt{n \cdot \mathrm{Var}(\hat{I}_n)}$,
+which is the empirical analogue of the sub-Gaussian parameter
+$\sigma$ from \cref{cor:tree}. The value $\sigma_{\mathrm{emp}} = 1.2$ is an upper envelope across
+all Gaussian-pair correlations and Gaussian-shift effect sizes
+tested in \cref{app:sigma}; the largest cell in the underlying tables is $1.10$ for the
+continuous--continuous KSG estimator and $0.89$ for the
+mixed-pair $k$-NN estimator, and we round upward to $1.2$
+(approximately a $9\%$ margin above the maximum observed value). The diagnostic is
+useful for interpreting the scale of fluctuations in the
+experiments, but it does not establish the sub-Gaussian deviation
+assumption used in \cref{cor:tree,cor:swap}. The numerical substitution $\sigma = 1.2$ into the
+sample-complexity formula should therefore be read as
+illustrative under the assumed tail bound, not as a proven
+finite-sample guarantee. A formal derivation of $\sigma$ as a
+function of explicit smoothness assumptions on the densities, in the
+spirit of \citet{singh2014exponential}, \citet{berrett2019efficient},
+and \citet{han2020optimal}, would convert the empirical diagnostic
+into a theorem.
+
+Our bounds depend on a mutual-information gap (the
+tree-symmetric-difference gap $\gamma$ in \cref{cor:tree} and the
+per-swap gap $\gamma_{\mathrm{swap}}$ in \cref{cor:swap}, which
+coincide under (A2)), but we do not derive these gaps from more
+interpretable signal properties such as effect sizes or
+conditional variances. A future analysis that expressed
+$\gamma_{\mathrm{swap}}$ in terms of such quantities would tie the
+sample-complexity formula directly to features of the
+data-generating model.
+
+\paragraph{Practical reach of the per-swap bound on the random-tree
+generator.} An empirical proxy for $\gamma_{\mathrm{swap}}$ computed on the
+estimated population MI matrix of the random-mixed-tree generator
+(\cref{app:datagen}) at $n = 8{,}000$ has median $\approx 0$ nats
+(IQR $[0, 0.001]$ and maximum $0.0035$ nats across 15 trials). At
+the median, (A2) effectively fails and the per-swap bound is
+undefined. Even at the largest $\gamma_{\mathrm{swap}}$ observed
+across the 15 trials, substituting $\gamma_{\mathrm{swap}} = 0.0035$
+nats into the \cref{cor:swap} sample-complexity formula at $\sigma
+= 1.2$, $p = 20$, $\delta = 0.1$ yields $n \ge 138 / (0.0035)^2
+\approx 1.1 \times 10^{7}$. \Cref{cor:swap} is therefore not
+numerically informative on the random-mixed-tree benchmark used in
+\cref{subsec:randomgraphs,subsec:suzuki}; the content of the bound
+is diluted by near-ties in the population MI matrix produced by
+that generator.
+
+\paragraph{\texorpdfstring{A bounded-$\gamma_{\mathrm{swap}}$ regime where \cref{cor:swap} is numerically informative.}{A bounded-gamma\_swap regime where Corollary 2 is numerically informative.}} As a
+controlled demonstration, we consider a three-node $D_1$-$G$-$D_2$
+Markov chain with strong effect: $D_1 \sim \mathrm{Uniform}\{0,1,2\}$,
+$G = 2 D_1 + \varepsilon$ with $\varepsilon \sim \mathcal{N}(0, 1)$,
+and $D_2$ obtained by binning $G$ at its population terciles. The
+population MIs are obtained in closed form except for $H(G)$, which
+is computed by one-dimensional quadrature against the Gaussian
+mixture $(1/3)\sum_{d=0}^{2} \mathcal{N}(2d, 1)$. The conditional
+entropy $H(G \mid D_1)$ equals $\tfrac{1}{2}\log(2\pi e)$, since each
+conditional density is $\mathcal{N}(2d, 1)$. The joint $P(D_1, D_2)$
+is a sum of three normal-CDF differences, giving $H(D_1, D_2)$ in
+closed form. The mutual information $I(G; D_2) = \log 3$ because
+$D_2$ is a deterministic function of $G$ at the population
+terciles. This gives
+$I(D_1; G) = 0.6191$ nats, $I(G; D_2) = 1.0986$ nats,
+$I(D_1; D_2) = 0.5202$ nats, and a per-swap gap
+$\gamma_{\mathrm{swap}} = 0.0990$ nats. Substituting into
+\cref{cor:swap} at $\sigma_{\mathrm{emp}} = 1.2$, $p = 3$,
+$\delta = 0.1$ gives a required sample size of $n \approx 7{,}400$;
+an empirical evaluation over $100$ trials at $n = 1{,}500$ achieves
+$100\%$ recovery on this regime. The bound is therefore conservative
+but numerically finite when $\gamma_{\mathrm{swap}}$ is bounded
+away from zero.
+
+\paragraph{\texorpdfstring{Extension to $p = 15$.}{Extension to p = 15.}}
+To verify that the same finite-sample story holds beyond the
+three-node case, we form a $p = 15$ generator by stacking five
+independent copies of the above $D_1$-$G$-$D_2$ chain. The
+population MI matrix is block-diagonal, so the per-block
+$\gamma_{\mathrm{swap}} = 0.0990$ nats from the three-node case
+carries over. Substituting into \cref{cor:swap} at $\sigma =
+1.2$, $p = 15$, $\delta = 0.1$ gives a required sample size of
+$n \approx 13{,}100$. The truth is a $10$-edge forest, whereas the
+maximum-spanning-tree step returns a $14$-edge spanning tree on the
+$15$ nodes; we therefore report whether all ten true edges are
+included in the returned spanning tree. Across $100$ trials at
+$n = 1{,}500$, all ten true edges are present in the returned tree
+in $100\%$ of trials, with edge-set $F_1 = 0.833$.\footnote{Because
+across-block population MI is exactly zero in this construction,
+assumption (A2) of unique-maximum MST does not hold globally. The
+demonstration is therefore most cleanly viewed as an instance of
+\cref{prop:forest}, the thresholded-forest version: under a
+shrinking threshold $\tau_n$ that excludes near-zero MI edges, the
+returned forest is exactly the ten-edge truth and edge-set $F_1$
+tends to $1$. We report the spanning-tree statistic above to keep
+the comparison directly aligned with the three-node demonstration in
+the preceding paragraph.} The bound's prediction is satisfied well
+before the formal required sample size, as expected of a
+conservative concentration bound. The general message is that \cref{cor:swap} is informative
+for problems whose population MI matrix has separated edge weights,
+and that it becomes numerically vacuous when the population matrix
+admits near-ties; the
+random-mixed-tree generator used in \cref{subsec:randomgraphs} and
+\cref{subsec:suzuki} produces the latter regime.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have revisited the mixed-type Chow--Liu algorithm and asked
+whether Edwards' type-pair restriction, which forbids a
+continuous variable from connecting two discrete variables along
+a tree path, is needed at the structure-selection stage. We
+showed that it is not. Tree selection depends only on pairwise
+mutual-information values, each symmetric in its two arguments
+and well-defined for every combination of variable types, so the
+Chow--Liu objective does not require a directional local factor
+such as $P(D \mid G)$. The restriction enters only at the
+subsequent step that fits a parametric density on the chosen
+tree.
+
+\Cref{prop:main} shows that the unrestricted procedure recovers
+the true Chow--Liu tree as the sample size grows, whenever the
+pairwise mutual-information estimator is per-pair consistent.
+\Cref{prop:forest} extends this conclusion to a thresholded
+forest analogue under a shrinking-threshold rule.
+\Cref{cor:tree,cor:swap} supply finite-sample tree-recovery
+bounds under a per-pair sub-Gaussian deviation assumption with a
+common parameter $\sigma$, and the per-swap bound in
+\cref{cor:swap} sharpens the tree-symmetric-difference bound in
+\cref{cor:tree} by a factor of $(p-1)^2$ in the exponent.
+\Cref{app:sigma} reports a variance-scale diagnostic that
+supports the sub-Gaussian substitution numerically without proving
+the tail itself.
+
+Empirically, the unrestricted procedure outperforms the
+Edwards-restricted baseline on random mixed graphs containing
+$D$-$G$-$D$ Markov paths that the restricted procedure cannot
+represent. Of the $20$ paired $t$-tests reported in
+\cref{subsec:randomgraphs,subsec:suzuki}, $15$ are significant at
+$\alpha = 0.05$ and $14$ remain significant under
+Benjamini--Hochberg correction at the same level. The synthetic eQTL
+network corroborates the recovery improvement on a biologically
+motivated structure, and the fully discrete Asia Bayesian
+benchmark, where Edwards' restriction is inactive by
+construction, serves as a separate sanity check that the
+pipeline attains the tree-approximation ceiling on a canonical
+discrete network. Substituting the MDL-discretisation estimator for the
+$k$-NN estimator inside the same unrestricted pipeline produces a
+sample-size-dependent comparison. MDL discretisation outperforms
+$k$-NN at $n = 75$; the two estimators perform indistinguishably
+at intermediate sample sizes ($n \in \{100, 200, 500, 1{,}000\}$);
+and $k$-NN outperforms MDL discretisation at $n = 1{,}500$.
+
+Two caveats apply. First, the returned graph is undirected, and
+its edges represent statistical associations rather than causal
+relations. Second, the result covers structure selection only.
+If a later step fits a parametric density on the chosen tree,
+Edwards' restriction or an alternative parametrisation of the
+offending local conditional becomes relevant again at that step,
+and we do not address it here.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Funding}
+
+No funding was received for this project.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Conflict of interest}
+
+The authors declare no conflict of interest.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Code and data availability}
+
+The full reproduction code, including the random-mixed-tree
+generator, the experiment scripts, and the figure-generation
+pipeline, is available at the repository
+\begin{center}
+\url{https://github.com/ash141886/unrestricted-chow-liu-}.
+\end{center}
+The Asia network dataset is included with the \texttt{gRbase} R
+package \citep{hojsgaard2012graphical}, and the breast-cancer
+gene-expression dataset of \citet{west2001predicting} is publicly
+available.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Declaration on the use of generative AI}
+
+During the preparation of this manuscript, the authors used a
+large language model (ChatGPT) to assist with writing polish,
+notation consistency checks, and LaTeX formatting. All
+theoretical results, derivations, experimental designs, software
+implementations, and final scientific claims were originated and
+verified by the authors. The authors reviewed and edited the
+AI-assisted content and take full responsibility for the content
+of the publication.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Appendix}
+
+The appendix contains the proofs of \cref{prop:main,prop:forest},
+the proofs of \cref{cor:tree,cor:swap}, the data-generation rules
+used by the random-mixed-tree generator, the empirical
+variance-scale diagnostic supporting the sub-Gaussian
+substitutions used in \cref{cor:tree,cor:swap}, and an exploratory
+adaptive-$k$ table.
+
+\appendix
+
+\section{Proofs and finite-sample bounds}
+\label{app:proofs}
+
+\subsection*{Proof of \cref{prop:main}}
+
+Define the population objective
+$W(T) = \sum_{(i,j) \in T} I(X_i; X_j)$ and its sample analogue
+$\hat{W}_n(T) = \sum_{(i,j) \in T} \hat{I}_n(X_i; X_j)$. The Chow--Liu
+estimator is $\hat{T}_n = \arg\max_{T \in \mathcal{T}} \hat{W}_n(T)$,
+and the target is $T^* = \arg\max_{T \in \mathcal{T}} W(T)$.
+
+\emph{Step 1 (uniform convergence over $\mathcal{T}$).} Every spanning
+tree has exactly $p - 1$ edges, so
+\begin{equation*}
+\sup_{T \in \mathcal{T}} |\hat{W}_n(T) - W(T)| \le (p-1)
+\max_{i < j} |\hat{I}_n(X_i; X_j) - I(X_i; X_j)|
+\overset{p}{\to} 0,
+\end{equation*}
+where the convergence follows from (A3) applied to each of the
+$\binom{p}{2}$ pairs.
+
+\emph{Step 2 (identification).} By (A2), $T^*$ is unique, so there
+exists a positive gap
+$\gamma = W(T^*) - \max_{T \ne T^*} W(T) > 0$.
+
+\emph{Step 3 (consistency).} For any $T \ne T^*$,
+\begin{equation*}
+\hat{W}_n(T^*) - \hat{W}_n(T) \;\ge\; \gamma - 2 \sup_{T'}
+|\hat{W}_n(T') - W(T')|.
+\end{equation*}
+The right-hand side exceeds $\gamma/2 > 0$ with probability tending
+to 1, so $P(\hat{T}_n = T^*) \to 1$. This is the standard M-estimation
+argument \citep{vandervaart2000asymptotic}. \qed
+
+\medskip
+\noindent\emph{Remark (no local CG parametrisation $P(D \mid G)$ is
+required).} For a mixed pair $(G, D)$, mutual information is
+symmetric:
+\begin{equation}
+I(G; D) \;=\; H(G) - H(G \mid D) \;=\; H(D) - H(D \mid G).
+\label{eq:identity}
+\end{equation}
+The Chow--Liu objective depends only on the scalar pairwise quantity
+$I(G; D)$, not on a chosen directed local factorisation of the pair.
+Evaluating or estimating an edge weight therefore does not require
+specifying a standard conditional-Gaussian local factor $P(D \mid
+G)$. Such a factor may be required at a later, separate step that
+writes the joint distribution as an explicit parametric density on
+the selected tree.
+
+\subsection{Data-generation rules for the random-mixed-tree
+generator}
+\label{app:datagen}
+
+The random-mixed-tree generator uses a Pr\"ufer sequence to sample a
+labelled tree uniformly. Conditional on the tree, data are generated
+in BFS order from a randomly chosen root, using the following
+parent-to-child rules:
+
+\begin{itemize}
+\item Discrete parent $D$, continuous child $G$:
+$G = \text{effect} \cdot D + \varepsilon$, with
+$\varepsilon \sim \mathcal{N}(0, 1)$.
+\item Continuous parent $G$, discrete child $D$:
+$D = \mathbf{1}[G > q_{1/3}] + \mathbf{1}[G > q_{2/3}]$, where
+$q_{1/3}$ and $q_{2/3}$ are the empirical tercile cutoffs of $G$.
+\item Two discrete: noisy copy with a 30\% flip rate.
+\item Two continuous:
+$G_{\mathrm{child}} = \alpha G_{\mathrm{parent}} + 0.8 \varepsilon$,
+with $\alpha = \text{effect}/(1 + \mathrm{sd}(G_{\mathrm{parent}}))$.
+\end{itemize}
+
+\subsection{Tree-symmetric-difference bound}
+\label{app:cor1}
+
+\begin{corollary}[Tree-symmetric-difference bound]
+\label{cor:tree}
+Assume (A1)--(A2) and that, for every pair $(i, j)$ with a common
+parameter $\sigma > 0$, the pairwise estimator satisfies the
+sub-Gaussian tail
+\begin{equation}
+P\bigl(|\hat{I}_n(X_i; X_j) - I(X_i; X_j)| > t\bigr) \;\le\; 2 \exp\!\left(-\frac{n t^2}{2 \sigma^2}\right), \qquad t > 0.
+\label{eq:subgauss}
+\end{equation}
+This tail implies (A3) and so subsumes the consistency hypothesis of
+\cref{prop:main}. With
+$\gamma = W(T^*) - \max_{T \ne T^*} W(T) > 0$,
+\begin{equation}
+P(\hat{T}_n \ne T^*) \;\le\; p^2 \exp\!\left(-\frac{n \gamma^2}{8
+\sigma^2 (p-1)^2}\right).
+\end{equation}
+\end{corollary}
+
+\emph{Proof.} From the uniform-bound step of \cref{prop:main} (Step
+1), $\hat{T}_n = T^*$ whenever
+$\sup_{T \in \mathcal{T}} |\hat{W}_n(T) - W(T)| < \gamma / 2$, which
+in turn holds whenever
+$\max_{i < j} |\hat{I}_n(X_i; X_j) - I(X_i; X_j)| < \gamma / (2(p-1))$.
+Hence
+\[
+P(\hat{T}_n \ne T^*) \;\le\;
+P\!\left(\max_{i < j}|\hat{I}_n(X_i; X_j) - I(X_i; X_j)| \ge
+\gamma / (2(p-1))\right).
+\]
+Applying a union bound over the $\binom{p}{2}$ pairs combined with
+the sub-Gaussian tail \eqref{eq:subgauss} evaluated at
+$t = \gamma / (2(p-1))$, and using
+$2 \binom{p}{2} = p(p-1) \le p^2$, we obtain the stated bound.
+Setting the right-hand side equal to $\delta$ and solving for $n$
+yields
+\begin{equation*}
+n \;\ge\; \frac{8 \sigma^2 (p-1)^2 \bigl(2 \log p + \log(1/\delta)\bigr)}{\gamma^2}.
+\end{equation*}
+\qed
+
+\subsection{Per-swap bound}
+\label{app:cor2}
+
+For each non-tree edge $e' \notin T^*$, let
+$\mathrm{Cyc}_{T^*}(e')$ denote the fundamental cycle of $e'$ relative
+to $T^*$, defined as the unique cycle obtained by adding $e'$ to
+$T^*$. Optimality of Kruskal's algorithm on the population implies
+that for every $e' \notin T^*$ and every
+$e \in \mathrm{Cyc}_{T^*}(e') \cap T^*$, $I(e) \ge I(e')$. Under (A2)
+the inequality is strict. We define the per-swap mutual information
+gap as
+\begin{equation}
+\gamma_{\mathrm{swap}} \;=\; \min_{e' \notin T^*}
+\min_{e \in \mathrm{Cyc}_{T^*}(e') \cap T^*} \bigl[I(e) - I(e')\bigr] > 0.
+\label{eq:gamma_swap}
+\end{equation}
+
+\begin{corollary}[Per-swap finite-sample bound]
+\label{cor:swap}
+Under (A1)--(A2) and the per-pair sub-Gaussian tail
+\eqref{eq:subgauss} with common parameter $\sigma > 0$,
+\begin{equation}
+P(\hat{T}_n \ne T^*) \;\le\; 2 p^3 \exp\!\left(-\frac{n
+\gamma_{\mathrm{swap}}^2}{8 \sigma^2}\right).
+\end{equation}
+The associated sample complexity is
+$n \ge 8 \sigma^2 \bigl(3 \log p + \log(2/\delta)\bigr) /
+\gamma_{\mathrm{swap}}^2 = O(\sigma^2 \log p /
+\gamma_{\mathrm{swap}}^2)$.
+\end{corollary}
+
+\emph{Proof.} By the matroid optimality characterisation of
+maximum spanning trees, if $\hat{I}_n(e) > \hat{I}_n(e')$ for every
+non-tree edge $e' \notin T^*$ and every tree edge
+$e \in \mathrm{Cyc}_{T^*}(e') \cap T^*$, then $T^*$ is the unique
+maximum spanning tree under $\hat{I}_n$ and Kruskal's algorithm
+returns $\hat{T}_n = T^*$. Taking the contrapositive,
+$\hat{T}_n \ne T^*$ implies that for at least one such pair
+$(e, e')$, $\hat{I}_n(e) \le \hat{I}_n(e')$.
+
+For a single pair $(e, e')$ with population gap
+$\gamma_{e, e'} = I(e) - I(e') > 0$,
+\begin{align*}
+& P\bigl(\hat{I}_n(e) \le \hat{I}_n(e')\bigr) \\
+& \le P\bigl(|\hat{I}_n(e) - I(e)| \ge \gamma_{e, e'}/2\bigr)
+   + P\bigl(|\hat{I}_n(e') - I(e')| \ge \gamma_{e, e'}/2\bigr) \\
+& \le 4 \exp\!\left(-\frac{n \gamma_{e, e'}^2}{8 \sigma^2}\right).
+\end{align*}
+Each non-tree edge $e'$ has a fundamental cycle of length at most
+$p$, containing at most $p - 1$ tree edges (the cycle consists of
+$e'$ together with the unique tree path between its endpoints). The number of
+non-tree edges is at most $\binom{p}{2} - (p-1) \le p^2/2$. A union
+bound over all relevant pairs, using
+$\gamma_{e, e'} \ge \gamma_{\mathrm{swap}}$, yields
+\begin{equation*}
+P(\hat{T}_n \ne T^*) \le \frac{p^2}{2} \cdot (p - 1) \cdot 4
+\exp\!\left(-\frac{n \gamma_{\mathrm{swap}}^2}{8 \sigma^2}\right)
+\le 2 p^3 \exp\!\left(-\frac{n \gamma_{\mathrm{swap}}^2}{8 \sigma^2}\right).
+\end{equation*}
+\qed
+
+\begin{remark}
+For Kruskal's algorithm under (A2) uniqueness, the second-best
+spanning tree differs from $T^*$ by a single edge swap, so the
+global gap $\gamma$ and the per-swap gap $\gamma_{\mathrm{swap}}$
+coincide at the population level. \Cref{cor:swap} is then
+tighter than \cref{cor:tree} by a factor of $(p-1)^2$ in
+the exponent. The bound is numerically informative for problems with
+$\gamma_{\mathrm{swap}}$ bounded away from zero; we discuss the
+practical reach of the bound on our random-mixed-tree generator in
+\cref{sec:discussion} (Limitations).
+\end{remark}
+
+\section{Empirical variance-scale diagnostic}
+\label{app:sigma}
+
+The bounds in \cref{cor:tree,cor:swap} are
+conditional finite-sample bounds: they hold whenever the pairwise
+mutual information estimator satisfies the sub-Gaussian deviation
+inequality $P(|\hat{I}_n - I| > t) \le 2 \exp(-n t^2 / (2 \sigma^2))$
+with the stated $\sigma$. Finite-sample sub-Gaussian constants for
+the KSG and mixed-pair $k$-NN estimators have not, to our knowledge,
+been established in the literature. We do not prove the sub-Gaussian
+condition. Instead, we report (i) a worst-case McDiarmid-type
+calculation, (ii) an empirical variance-scale diagnostic, and (iii) a
+multi-quantile tail check on the diagnostic. The latter two are
+empirical and do not constitute a proof of sub-Gaussian behaviour.
+The discrete--discrete plug-in estimator (used on Asia) is bounded
+above by $\log\min(K_i, K_j)$ and so satisfies a sub-Gaussian tail
+by Hoeffding's inequality with a constant depending on the support
+sizes; we do not separately calibrate this case.
+
+\paragraph{Worst-case theoretical bound (McDiarmid).} Each summand in
+the KSG estimator is $\psi(n_x(i) + 1) + \psi(n_y(i) + 1)$, where
+$\psi$ is the digamma function. The summand is bounded above by
+$\psi(N) \le \log(N+1)$. Changing one data point
+changes the $k$-nearest-neighbour structure of at most $O(k)$ other
+points, so the bounded-difference constants are
+$c_i = O((k \log N)/N)$. McDiarmid's inequality
+$P(|\hat{I}_n - \mathbb{E}\hat{I}_n| > t) \le 2 \exp(-2 t^2 /
+\sum_i c_i^2)$ then gives a sub-Gaussian tail with
+$\sigma^2 = O\bigl((k \log N)^2 / 4\bigr)$. For $k = 5$ and $N = 1{,}500$, this gives $\sigma \approx
+k \log(N) / 2 \approx 18$ nats, which is too loose to be
+informative in practice.
+
+\paragraph{Empirical variance-scale diagnostic.} The McDiarmid bound
+above is a worst-case constant derived from the bounded-difference
+property of the estimator and is too loose to be useful in practice.
+A practical alternative is to estimate the asymptotic variance
+scale directly. The asymptotic-variance relation
+$\mathrm{Var}(\hat{I}_n) \approx \sigma^2 / n$ suggests an empirical
+diagnostic. We draw $\hat{I}_n$ from 200
+independent samples of size $n$, compute the sample variance, and
+report $\sigma_{\mathrm{emp}} = \sqrt{n \cdot \mathrm{Var}(\hat{I}_n)}$.
+We caution that this diagnostic estimates a variance scale; a bounded
+variance does not, on its own, imply a sub-Gaussian tail (a
+distribution can have bounded variance and polynomial rather than
+Gaussian tails). The reported $\sigma_{\mathrm{emp}}$ is therefore the
+$\sigma$ that one would substitute if the sub-Gaussian deviation
+inequality held, not an established constant. The procedure is
+repeated for several sample sizes $n \in \{200, 500, 1{,}500,
+5{,}000\}$ to verify the $n^{-1/2}$ scaling.
+
+\begin{table}[ht]
+\centering
+\caption{Empirical $\sigma$ for the KSG continuous--continuous
+estimator on Gaussian pairs.}
+\label{tab:sigma_cc}
+\begin{tabular}{ccc}
+\toprule
+$\rho$ & True MI & Median $\sigma_{\mathrm{emp}}$ \\
+\midrule
+0.00 & 0.0000 & 0.34 \\
+0.30 & 0.0472 & 0.63 \\
+0.50 & 0.1438 & 0.77 \\
+0.70 & 0.3367 & 0.94 \\
+0.90 & 0.8304 & 1.10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Empirical $\sigma$ for the mixed-pair $k$-NN estimator on
+Gaussian-shift data with $K = 3$ discrete categories.}
+\label{tab:sigma_cd}
+\begin{tabular}{ccc}
+\toprule
+effect & True MI & Median $\sigma_{\mathrm{emp}}$ \\
+\midrule
+0.5 & 0.0771 & 0.76 \\
+1.0 & 0.2538 & 0.89 \\
+1.5 & 0.4472 & 0.85 \\
+2.0 & 0.6191 & 0.82 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The empirical $\sigma$ is approximately constant in $n$, which
+confirms the $n^{-1/2}$ scaling of
+$\sqrt{\mathrm{Var}(\hat{I}_n)}$. It increases with the underlying MI
+for the continuous--continuous estimator and is approximately constant
+in effect size for the mixed-pair estimator. Across all settings tested, $\sigma_{\mathrm{emp}} \le 1.2$.
+Illustratively substituting the empirical variance-scale value
+$\sigma_{\mathrm{emp}} = 1.2$ into the \cref{cor:swap}
+sample-complexity formula gives
+\begin{equation}
+n \ge \frac{8 \cdot 1.2^2 \bigl(3 \log p + \log(2/\delta)\bigr)}{
+\gamma_{\mathrm{swap}}^2}
+= \frac{11.52 \bigl(3 \log p + \log(2/\delta)\bigr)}{\gamma_{\mathrm{swap}}^2}.
+\end{equation}
+For $p = 20$ and $\delta = 0.1$, this evaluates to
+$n \ge 138 / \gamma_{\mathrm{swap}}^2$. At
+$\gamma_{\mathrm{swap}} = 0.1$ nats, $n \ge 13{,}800$; at
+$\gamma_{\mathrm{swap}} = 0.3$ nats, $n \ge 1{,}530$, which is
+comparable to the $n = 1{,}500$ used in the experiments.
+
+\paragraph{Multi-quantile tail check.} The variance-scale estimate
+above does not test the tail behaviour. As a falsifiable diagnostic,
+we draw 2000 estimates of $\hat{I}_n$ on Gaussian pairs at
+$\rho = 0.5$ (true MI $\approx 0.144$) and $n = 1{,}500$, and compare
+the empirical exceedance probabilities
+$\hat{P}\bigl(|\hat{I}_n - I| > t\bigr)$ to the Gaussian bound
+$2 \exp(-n t^2 / (2 \sigma_{\mathrm{emp}}^2))$ at several $t$ values.
+For all tested $t$, the empirical exceedance probabilities are
+bounded above by the corresponding Gaussian bound
+(\cref{tab:quantile}).
+
+\begin{table}[ht]
+\centering
+\caption{Multi-quantile diagnostic for the KSG estimator at
+$\rho = 0.5$, $n = 1{,}500$, 2000 trials. Empirical exceedance
+probability vs.\ the Gaussian bound at the empirically estimated
+variance scale $\sigma_{\mathrm{emp}} = 0.74$. Rows with bound $> 1$
+are vacuous (probabilities are bounded by 1 by definition) and are
+omitted; the informative range begins around $t = 0.03$.}
+\label{tab:quantile}
+\begin{tabular}{ccc}
+\toprule
+$t$ & $\hat{P}(|\hat{I}_n - I| > t)$ & $2\exp(-n t^2/(2\sigma_{\mathrm{emp}}^2))$ \\
+\midrule
+0.030 & 0.110 & 0.590 \\
+0.040 & 0.038 & 0.228 \\
+0.050 & 0.009 & 0.067 \\
+0.100 & 0.000 & 0.000 \\
+0.200 & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At every informative $t$, the empirical exceedance probability is
+bounded above by the Gaussian bound. This is consistent with
+sub-Gaussian behaviour for this estimator on this distribution, but
+it does not prove sub-Gaussian behaviour in general.
+
+\paragraph{Scope of the diagnostic.} The empirical
+$\sigma_{\mathrm{emp}}$ is computed on Gaussian-pair and Gaussian-%
+shift conditional families only. We do not test the bimodal, skewed, or heavy-tailed conditional
+families used in \cref{subsec:miacc}; the calibration is
+therefore narrower than the experiments in
+\cref{sec:experiments}.
+
+Rigorous finite-sample concentration for the KSG estimator under
+explicit smoothness assumptions has been studied in related
+directions by \citet{singh2014exponential} for $k$-NN entropy
+estimators, \citet{berrett2019efficient} for efficient $k$-NN
+entropy under analytic densities, and \citet{han2020optimal} for
+nonparametric divergence estimators. A formal derivation of $\sigma$
+as a function of density-smoothness parameters along these lines
+would convert our empirical diagnostic into a theorem.
+
+\section{\texorpdfstring{Exploratory adaptive-$k$ table}{Exploratory adaptive-k table}}
+\label{app:adaptive}
+
+As an exploratory check using $10$ trials per sample size, we test
+the rule $k(n) = \max\bigl(5, \lceil 150 / \sqrt{n}\rceil\bigr)$ on
+the same MI-estimator sample-size sweep used in
+\cref{subsec:suzuki}.
+
+\begin{table}[ht]
+\centering
+\caption{Adaptive-$k$ variant against the MDL-discretisation MI
+estimator \citep{suzuki2017chow}, $p = 15$, $\text{effect} = 0.6$,
+10 trials per row (exploratory).}
+\label{tab:adaptive}
+\begin{tabular}{ccccc}
+\toprule
+$n$ & $k(n)$ & $F_1$ adaptive-$k$ & $F_1$ MDL discr. & paired $P$ \\
+\midrule
+75   & 18 & 0.471 $\pm$ 0.097 & 0.566 $\pm$ 0.109 & 0.0068 \\
+100  & 15 & 0.471 $\pm$ 0.125 & 0.526 $\pm$ 0.112 & 0.2163 \\
+200  & 11 & 0.557 $\pm$ 0.149 & 0.619 $\pm$ 0.112 & 0.0711 \\
+500  & 7  & 0.664 $\pm$ 0.120 & 0.671 $\pm$ 0.107 & 0.8760 \\
+1000 & 5  & 0.679 $\pm$ 0.140 & 0.629 $\pm$ 0.119 & 0.2259 \\
+1500 & 5  & 0.664 $\pm$ 0.079 & 0.664 $\pm$ 0.096 & 1.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The adaptive rule narrows but does not eliminate the small-sample
+advantage of the MDL-discretisation MI estimator. The trial count is
+smaller than that used in the main MI-estimator comparison
+(\cref{tab:suzuki_n}), so the adaptive-$k$ check is presented as
+exploratory only and is not used to revise the main $n = 1{,}500$
+comparison.
+
+\section{\texorpdfstring{Proof of \cref{prop:forest}}{Proof of Proposition 2}}
+\label{app:prop2}
+
+We partition the $\binom{p}{2}$ pairs into
+$\mathcal{E}_+ = \{(i,j) \in F^*\}$,
+$\mathcal{E}_0 = \{(i,j): i, j \text{ lie in distinct components of } F^*\}$,
+and $\mathcal{E}_c$ (the remaining pairs). By (A4),
+$I \ge \delta > 0$ on $\mathcal{E}_+$ and $I = 0$ on $\mathcal{E}_0$.
+
+\emph{Step 1.} For $(i,j) \in \mathcal{E}_+$, (A3) together with
+$\tau_n \to 0$ implies that for sufficiently large $n$,
+$\tau_n < \delta/2$, so $P(\hat{I}_n > \tau_n) \to 1$.
+
+\emph{Step 2.} For $(i,j) \in \mathcal{E}_0$, (A5) gives
+$P(|\hat{I}_n| > \tau_n) \to 0$, so $P(\hat{I}_n \le \tau_n) \to 1$.
+Note that (A5) is strictly stronger than (A3). The condition
+(A3) only gives pointwise convergence $\hat{I}_n
+\overset{p}{\to} 0$ at any fixed threshold, but here $\tau_n$
+itself shrinks to zero; (A5) is the joint requirement that the
+estimator's convergence rate dominates the shrinkage rate of
+$\tau_n$. The accompanying condition $\tau_n \sqrt{n} \to \infty$
+ensures that $\tau_n$ dominates the $O_p(n^{-1/2})$ fluctuations
+of the estimator.
+
+\emph{Step 3.} Pairs in $\mathcal{E}_c$ have both endpoints in
+the same component of $F^*$. On the event from Step 2, where
+every cross-component edge in $\mathcal{E}_0$ has been removed by
+the threshold rule, Kruskal's algorithm reduces to an
+independent maximum-spanning-tree problem on each connected
+component of $F^*$, because no surviving candidate edge crosses
+components.
+
+Fix one component $C$ and consider this restricted problem on
+$C$:
+\begin{itemize}
+\item the vertex set is $C$;
+\item the candidate edges are
+$\{(i,j) \in \mathcal{E}_+ \cup \mathcal{E}_c : i, j \in C\}$;
+\item the population edge weights are the pairwise mutual
+informations $I(X_i; X_j)$ for $i, j \in C$;
+\item the population target is the maximum spanning tree on $C$
+under these weights, which by (A2$'$) is unique and equals the
+restriction of $F^*$ to $C$.
+\end{itemize}
+
+The hypotheses of \cref{prop:main} hold on this restricted
+problem: (A1) is invariant under restriction, (A3) is a pairwise
+condition that still holds for every pair in $C$, and (A2$'$)
+gives uniqueness of the target tree on $C$. Applying
+\cref{prop:main} to the restricted problem therefore yields that
+Kruskal's algorithm run on the within-component candidate edges
+returns the restriction of $F^*$ to $C$ with probability tending
+to 1.
+
+Repeating this argument for every component of $F^*$ gives that
+the empirical forest matches $F^*$ on $\mathcal{E}_+$ with
+probability tending to 1. Any further edge from $\mathcal{E}_c$
+considered later by Kruskal would close a cycle within an
+already-built component, and is therefore rejected.
+
+\emph{Step 4.} The intersection of the events in Steps~1 to 3 has
+probability tending to 1. On this event, Kruskal's algorithm with
+threshold $\tau_n$ returns exactly $F^*$ by (A2$'$). \qed
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography. The references are stored in references.bib in the
+% same folder. For Behaviormetrika submission, you may need to swap
+% \bibliographystyle{plainnat} for the journal's required style
+% (e.g., spbasic).
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

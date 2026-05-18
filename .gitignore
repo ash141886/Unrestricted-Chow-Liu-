@@ -1,0 +1,55 @@
+# Byte-compiled / cached Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Distribution / build artefacts
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+.tox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# LaTeX intermediates (the compiled PDF is committed in docs/)
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.lof
+*.lot
+*.fdb_latexmk
+*.synctex.gz
+*.fls
+
+# Experiment outputs that the script regenerates on the fly
+*.npy
+*.npz
+*.pkl
+*.csv.bak
+
+# Coverage / pytest
+.coverage
+htmlcov/
+.pytest_cache/
