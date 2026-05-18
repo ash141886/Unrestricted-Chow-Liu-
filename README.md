@@ -5,10 +5,8 @@ Reproduction code for the paper
 > **A Note on Unrestricted Chow–Liu Tree Selection for Mixed
 > Discrete–Continuous Data**
 
-The manuscript is currently under review. This repository contains
-the code, data, and figures needed to reproduce every table and
-figure in the paper. A link to the published version will be added
-once it is available.
+This repository contains the code, data, and figures needed to
+reproduce every table and figure in the paper.
 
 ---
 
